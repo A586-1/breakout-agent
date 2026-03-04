@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>BreakoutAgent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #07090d; color: #fff; font-family: 'Space Mono', monospace; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    #app { max-width: 480px; margin: 0 auto; padding-bottom: 60px; }
+
+    .header { padding: 20px 16px 12px; position: sticky; top: 0; z-index: 10; background: #07090d; }
+    .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .title { font-family: 'Orbitron', monospace; font-size: 22px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 30px #00ff9530; }
+    .title span { color: #00ff95; }
+    .subtitle { color: #2a4a3a; font-size: 10px; margin-top: 3px; }
+    .refresh-btn { background: transparent; border: 1px solid #1e2530; border-radius: 10px; padding: 8px 12px; color: #5a6a7a; font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .refresh-btn:disabled { color: #00ff9580; cursor: not-allowed; }
+    .spinning { animation: spin 0.8s linear infinite; display: inline-block; }
+
+    .progress-bar { height: 2px; background: #1e2530; border-radius: 2px; margin: 10px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg,#00ff95,#00bfff); border-radius: 2px; transition: width 0.3s; }
+
+    .stats { display: flex; gap: 8px; margin: 12px 0; }
+    .stat { flex: 1; background: #0a0f14; border: 1px solid #141c24; border-radius: 10px; padding: 10px 0; text-align: center; }
+    .stat.alert { border-color: #00ff9530; }
+    .stat-val { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 700; }
+    .stat-val.green { color: #00ff95; text-shadow: 0 0 12px #00ff9540; }
+    .stat-label { color: #2a3a4a; font-size: 9px; letter-spacing: 1px; margin-top: 2px; }
+
+    .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filter-btn { flex: 1; padding: 9px 0; border-radius: 8px; background: transparent; border: 1px solid #1a2230; color: #3a4a5a; font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; letter-spacing: 1px; }
+    .filter-btn.active { background: #00ff9515; border-color: #00ff9550; color: #00ff95; }
+
+    .divider { height: 1px; background: linear-gradient(90deg,transparent,#1e2530,transparent); margin-bottom: 12px; }
+
+    .coins { padding: 0 16px; }
+    .coin-card { background: #0d1117; border: 1px solid #1e2530; border-radius: 16px; padding: 16px; margin-bottom: 12px; animation: fadeIn 0.3s ease both; }
+    .coin-card.has-signals { background: linear-gradient(135deg,#0d1117,#0d1a0f); border-color: #00ff9540; box-shadow: 0 0 20px #00ff9510; }
+
+    .coin-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .coin-name { display: flex; align-items: center; gap: 8px; }
+    .coin-symbol { font-weight: 700; font-size: 16px; }
+    .alert-badge { background: #00ff9520; color: #00ff95; border: 1px solid #00ff9540; border-radius: 20px; padding: 1px 6px; font-size: 10px; }
+    .coin-price { color: #5a6a7a; font-size: 12px; margin-top: 2px; }
+    .coin-right { text-align: right; }
+    .coin-change { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+
+    .coin-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .coin-stat { color: #5a6a7a; font-size: 11px; }
+    .coin-stat span { color: #7a8a9a; }
+    .coin-stat span.hot { color: #ff8c00; }
+    .coin-stat span.cold { color: #00bfff; }
+
+    .signals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; margin-top: 4px; }
+    .signal { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; white-space: nowrap; }
+
+    .ai-btn { background: transparent; border: 1px solid #00ff9540; color: #00ff95; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-family: 'Space Mono', monospace; cursor: pointer; width: 100%; letter-spacing: 1px; }
+
+    .sparkline { display: block; }
+
+    .empty { text-align: center; padding: 50px 20px; color: #2a3a4a; font-size: 13px; line-height: 2; }
+
+    .error-box { background: #ff4d4d10; border: 1px solid #ff4d4d40; border-radius: 12px; padding: 20px; text-align: center; color: #ff4d4d; font-size: 12px; line-height: 1.8; margin: 0 16px 16px; }
+    .retry-btn { display: block; margin: 12px auto 0; background: #ff4d4d20; border: 1px solid #ff4d4d40; color: #ff4d4d; border-radius: 8px; padding: 8px 20px; font-family: 'Space Mono', monospace; cursor: pointer; }
+
+    .overlay { position: fixed; inset: 0; background: #000000bb; z-index: 100; display: flex; align-items: flex-end; padding: 16px; }
+    .panel { background: #0d1117; border: 1px solid #00ff9550; border-radius: 20px; padding: 20px; width: 100%; max-width: 480px; margin: 0 auto; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .panel-title { color: #00ff95; font-weight: 700; }
+    .close-btn { background: none; border: none; color: #5a6a7a; font-size: 22px; cursor: pointer; }
+    .panel-body { background: #070d12; border-radius: 12px; padding: 16px; min-height: 80px; color: #c9d5e0; font-size: 13px; line-height: 1.8; border: 1px solid #1a2230; }
+    .analyzing { color: #00ff9570; animation: pulse 1s infinite; }
+    .disclaimer { color: #1e2e20; font-size: 10px; margin-top: 10px; text-align: center; letter-spacing: 1px; }
+
+    .footer { text-align: center; padding: 20px 16px; color: #1a2a1a; font-size: 10px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <div class="title">BREAKOUT<span>AGENT</span></div>
+        <div class="subtitle" id="subtitle">AI-powered crypto breakout scanner</div>
+      </div>
+      <button class="refresh-btn" id="refreshBtn" onclick="startScan()">
+        <span id="refreshIcon">↺</span> REFRESH
+      </button>
+    </div>
+    <div class="progress-bar" id="progressBar" style="display:none">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="stats" id="stats" style="display:none">
+      <div class="stat" id="statStrong">
+        <div class="stat-val" id="valStrong">0</div>
+        <div class="stat-label">STRONG</div>
+      </div>
+      <div class="stat" id="statSignals">
+        <div class="stat-val" id="valSignals">0</div>
+        <div class="stat-label">SIGNALS</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="valTracked">0</div>
+        <div class="stat-label">TRACKED</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="valTotal">0</div>
+        <div class="stat-label">TOTAL</div>
+      </div>
+    </div>
+    <div class="filters" id="filters" style="display:none">
+      <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">ALL</button>
+      <button class="filter-btn" id="filterAlerts" onclick="setFilter('alerts')">🔔 ALERTS</button>
+      <button class="filter-btn" id="filter2" onclick="setFilter('2plus')">2+ SIGNALS</button>
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <div class="coins" id="coinList">
+    <div class="empty">
+      <div style="font-size:36px;margin-bottom:12px">📡</div>
+      Loading your watchlist...<br/>Fetching live Binance data
+    </div>
+  </div>
+  <div class="footer">Powered by Binance API · Refreshes every 5 min<br/>NOT FINANCIAL ADVICE</div>
+</div>
+
+<!-- AI Panel -->
+<div class="overlay" id="aiOverlay" style="display:none" onclick="closePanel()">
+  <div class="panel" onclick="event.stopPropagation()">
+    <div class="panel-header">
+      <span class="panel-title" id="panelTitle">⚡ AI ANALYST</span>
+      <button class="close-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div id="panelSignals" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+    <div class="panel-body" id="panelBody"><span class="analyzing">● Analyzing...</span></div>
+    <div class="disclaimer">NOT FINANCIAL ADVICE · INFORMATIONAL ONLY</div>
+  </div>
+</div>
+
+<script>
+const COINS = [
+  "BTC","ETH","SOL","BNB","XRP","ADA","AVAX","DOGE","LINK","RENDER",
+  "FIL","UNI","TAO","HYPE","ZEC","HBAR","XLM","ALGO","SEI","SUI",
+  "AKT","ONDO","TRX","FET","XTZ","ENJ","ICP","NEAR","ATOM","RUNE",
+  "WIF","SYRUP","PNUT","BONK","PEPE","POPCAT","SUPER","INJ","CAKE",
+  "BIGTIME","OP","IMX","AIOZ","TURBO","BLUR","OSMO","GIGA","RAY","TIA","DOT"
+];
+
+let allCoins = [];
+let currentFilter = 'all';
+let scanInterval;
+
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return "N/A";
+  if (n >= 1000) return n.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2});
+  if (n >= 1) return n.toFixed(2);
+  if (n >= 0.01) return n.toFixed(4);
+  return n.toFixed(8);
+}
+
+function computeRSI(prices, period=14) {
+  if (!prices || prices.length < period+1) return null;
+  let gains=0, losses=0;
+  for (let i=prices.length-period; i<prices.length; i++) {
+    const d = prices[i]-prices[i-1];
+    if (d>0) gains+=d; else losses+=Math.abs(d);
+  }
+  const avgL = losses/period;
+  if (avgL===0) return 100;
+  return 100 - 100/(1+(gains/period)/avgL);
+}
+
+function computeMA(prices, period) {
+  if (!prices || prices.length<period) return null;
+  return prices.slice(-period).reduce((a,b)=>a+b,0)/period;
+}
+
+function detectSignals(prices, change24h, volSpike) {
+  if (!prices || prices.length<5) return [];
+  const signals = [];
+  const cur = prices[prices.length-1];
+  const high = Math.max(...prices);
+  const low = Math.min(...prices);
+  const rsi = computeRSI(prices);
+  const ma20 = computeMA(prices, Math.min(20,prices.length));
+  const ma50 = computeMA(prices, Math.min(50,prices.length));
+  const prevMa20 = computeMA(prices.slice(0,-1), Math.min(20,prices.length-1));
+  const prevMa50 = computeMA(prices.slice(0,-1), Math.min(50,prices.length-1));
+
+  if (cur >= high*0.985) signals.push({label:"30D High Breakout", strength:"strong", icon:"🚀"});
+  if (cur <= low*1.015) signals.push({label:"30D Low Break", strength:"danger", icon:"💥"});
+  if (rsi!==null && rsi>68) signals.push({label:`RSI Overbought ${rsi.toFixed(0)}`, strength:"caution", icon:"🔥"});
+  if (rsi!==null && rsi<32) signals.push({label:`RSI Oversold ${rsi.toFixed(0)}`, strength:"opportunity", icon:"❄️"});
+  if (Math.abs(change24h)>4) signals.push({label:`Big Move ${change24h>0?"+":""}${change24h.toFixed(1)}%`, strength:change24h>0?"strong":"danger", icon:change24h>0?"📈":"📉"});
+  if (volSpike && volSpike>1.8) signals.push({label:`Volume Spike ${volSpike.toFixed(1)}x`, strength:"medium", icon:"📊"});
+  if (ma20&&ma50&&prevMa20&&prevMa50) {
+    if (ma20>ma50&&prevMa20<=prevMa50) signals.push({label:"Golden Cross", strength:"strong", icon:"✨"});
+    if (ma20<ma50&&prevMa20>=prevMa50) signals.push({label:"Death Cross", strength:"danger", icon:"☠️"});
+  }
+  return signals;
+}
+
+function signalColor(strength) {
+  const map = {strong:["#00ff9520","#00ff95"], danger:["#ff4d4d20","#ff4d4d"], caution:["#ff8c0020","#ff8c00"], opportunity:["#00bfff20","#00bfff"], medium:["#ffd70020","#ffd700"]};
+  return map[strength]||map.medium;
+}
+
+function renderSignalBadge(s) {
+  const [bg,col] = signalColor(s.strength);
+  return `<span class="signal" style="background:${bg};border:1px solid ${col};color:${col}">${s.icon} ${s.label}</span>`;
+}
+
+function sparklineSVG(prices, color) {
+  if (!prices||prices.length<2) return "";
+  const min=Math.min(...prices), max=Math.max(...prices), range=max-min||1;
+  const w=80,h=28;
+  const pts = prices.map((p,i)=>`${(i/(prices.length-1))*w},${h-((p-min)/range)*h}`).join(" ");
+  return `<svg width="${w}" height="${h}" class="sparkline"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+
+function renderCoin(coin, idx) {
+  const isUp = (coin.change24h||0)>=0;
+  const color = isUp?"#00ff95":"#ff4d4d";
+  const has = coin.signals&&coin.signals.length>0;
+  const rsiColor = coin.rsi>68?"hot":coin.rsi<32?"cold":"";
+
+  return `
+  <div class="coin-card ${has?"has-signals":""}" style="animation-delay:${idx*0.04}s">
+    <div class="coin-top">
+      <div>
+        <div class="coin-name">
+          <span class="coin-symbol">${coin.symbol}</span>
+          ${has?`<span class="alert-badge">● ALERT</span>`:""}
+        </div>
+        <div class="coin-price">$${fmt(coin.price)}</div>
+      </div>
+      <div class="coin-right">
+        <div class="coin-change" style="color:${color}">${isUp?"+":""}${(coin.change24h||0).toFixed(2)}%</div>
+        ${sparklineSVG(coin.prices, color)}
+      </div>
+    </div>
+    <div class="coin-stats">
+      ${coin.rsi!=null?`<span class="coin-stat">RSI <span class="${rsiColor}">${coin.rsi.toFixed(1)}</span></span>`:""}
+      ${coin.ma20?`<span class="coin-stat">MA20 <span>$${fmt(coin.ma20)}</span></span>`:""}
+      ${coin.ma50?`<span class="coin-stat">MA50 <span>$${fmt(coin.ma50)}</span></span>`:""}
+    </div>
+    ${has?`
+    <div class="signals">${coin.signals.map(renderSignalBadge).join("")}</div>
+    <button class="ai-btn" onclick='openAI(${JSON.stringify(coin).replace(/'/g,"&#39;")})'>⚡ ASK AI ANALYST</button>
+    `:""}
+  </div>`;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('filter'+{all:'All',alerts:'Alerts','2plus':'2'}[f]).classList.add('active');
+  renderCoins();
+}
+
+function renderCoins() {
+  const list = document.getElementById('coinList');
+  let filtered = allCoins;
+  if (currentFilter==='alerts') filtered = allCoins.filter(c=>c.signals.length>0);
+  if (currentFilter==='2plus') filtered = allCoins.filter(c=>c.signals.length>=2);
+
+  if (filtered.length===0) {
+    list.innerHTML = `<div class="empty">No coins match this filter.<br/>Markets are quiet.</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map((c,i)=>renderCoin(c,i)).join("");
+}
+
+function updateStats() {
+  const alertCount = allCoins.filter(c=>c.signals.length>0).length;
+  const totalSignals = allCoins.reduce((a,c)=>a+c.signals.length,0);
+  const strongCount = allCoins.filter(c=>c.signals.some(s=>s.strength==="strong")).length;
+
+  document.getElementById('valStrong').textContent = strongCount;
+  document.getElementById('valSignals').textContent = totalSignals;
+  document.getElementById('valTracked').textContent = alertCount;
+  document.getElementById('valTotal').textContent = allCoins.length;
+
+  if (alertCount>0) {
+    document.getElementById('valSignals').classList.add('green');
+    document.getElementById('valTracked').classList.add('green');
+  }
+
+  document.getElementById('filterAlerts').textContent = `🔔 ALERTS (${alertCount})`;
+  document.getElementById('filterAll').textContent = `ALL (${allCoins.length})`;
+  document.getElementById('stats').style.display = 'flex';
+  document.getElementById('filters').style.display = 'flex';
+}
+
+async function startScan() {
+  const btn = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+  const subtitle = document.getElementById('subtitle');
+
+  btn.disabled = true;
+  icon.className = 'spinning';
+  progressBar.style.display = 'block';
+  progressFill.style.width = '5%';
+  subtitle.textContent = 'Fetching live prices...';
+  document.getElementById('coinList').innerHTML = '<div class="empty"><div style="font-size:36px;margin-bottom:12px">📡</div>Scanning markets...</div>';
+
+  try {
+    // Fetch all tickers
+    const tickerRes = await fetch('/api/coins');
+    if (!tickerRes.ok) throw new Error('Failed to fetch prices');
+    const { coins } = await tickerRes.json();
+    progressFill.style.width = '30%';
+    subtitle.textContent = `Got prices, fetching candles...`;
+
+    // Fetch candles in parallel batches of 8
+    const results = [];
+    const batchSize = 8;
+    for (let i=0; i<coins.length; i+=batchSize) {
+      const batch = coins.slice(i, i+batchSize);
+      const batchResults = await Promise.all(batch.map(async coin => {
+        try {
+          const r = await fetch(`/api/candles?symbol=${coin.symbol}`);
+          if (!r.ok) return {...coin, prices:[], signals:[], rsi:null, ma20:null, ma50:null};
+          const {prices, volumes} = await r.json();
+          const avgVol = volumes.slice(0,-1).reduce((a,b)=>a+b,0)/(volumes.length-1);
+          const volSpike = volumes[volumes.length-1]/avgVol;
+          const rsi = computeRSI(prices);
+          const ma20 = computeMA(prices, Math.min(20,prices.length));
+          const ma50 = computeMA(prices, Math.min(50,prices.length));
+          const signals = detectSignals(prices, coin.change24h, volSpike);
+          return {...coin, prices, rsi, ma20, ma50, signals};
+        } catch {
+          return {...coin, prices:[], signals:[], rsi:null, ma20:null, ma50:null};
+        }
+      }));
+      results.push(...batchResults);
+      progressFill.style.width = `${30 + (results.length/coins.length)*65}%`;
+      subtitle.textContent = `Scanned ${results.length}/${coins.length} coins...`;
+    }
+
+    results.sort((a,b)=>b.signals.length-a.signals.length);
+    allCoins = results;
+    progressFill.style.width = '100%';
+
+    const now = new Date();
+    subtitle.textContent = `Live · Updated ${now.toLocaleTimeString()}`;
+    updateStats();
+    renderCoins();
+
+  } catch(e) {
+    document.getElementById('coinList').innerHTML = `
+      <div class="error-box">
+        ${e.message||'Scan failed'}
+        <button class="retry-btn" onclick="startScan()">↺ Retry</button>
+      </div>`;
+    subtitle.textContent = 'Scan failed';
+  }
+
+  btn.disabled = false;
+  icon.className = '';
+  setTimeout(()=>{ progressBar.style.display='none'; progressFill.style.width='0%'; }, 1000);
+}
+
+function openAI(coin) {
+  document.getElementById('aiOverlay').style.display = 'flex';
+  document.getElementById('panelTitle').textContent = `⚡ AI ANALYST — ${coin.symbol}`;
+  document.getElementById('panelSignals').innerHTML = coin.signals.map(renderSignalBadge).join('');
+  document.getElementById('panelBody').innerHTML = '<span class="analyzing">● Analyzing market conditions...</span>';
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:`You are a concise crypto analyst. In 3-4 sentences analyze and give risk level (Low/Medium/High):
+${coin.symbol} | Price: $${fmt(coin.price)} | 24h: ${(coin.change24h||0).toFixed(2)}% | RSI: ${coin.rsi?coin.rsi.toFixed(1):'N/A'} | MA20: $${fmt(coin.ma20)} | MA50: $${fmt(coin.ma50)}
+Signals: ${coin.signals.map(s=>s.label).join(', ')}
+Be direct. No disclaimers.`}]
+    })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    const text = d.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'No analysis available.';
+    document.getElementById('panelBody').textContent = text;
+  })
+  .catch(e=>{ document.getElementById('panelBody').textContent = 'AI analyst unavailable: '+e.message; });
+}
+
+function closePanel() {
+  document.getElementById('aiOverlay').style.display = 'none';
+}
+
+// Start
+startScan();
+scanInterval = setInterval(startScan, 5*60*1000);
+</script>
+</body>
+</html>
