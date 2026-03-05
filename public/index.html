@@ -269,8 +269,8 @@ function calcSigs(prices,chg){
   const pm20=calcMA(prices.slice(0,-1),Math.min(20,prices.length-1)),pm50=calcMA(prices.slice(0,-1),Math.min(50,prices.length-1));
   if(cur>=hi*0.985)s.push({l:"30D High Breakout",st:"strong",i:"🚀"});
   if(cur<=lo*1.015)s.push({l:"30D Low Break",st:"danger",i:"💥"});
-  if(r!==null&&r>68)s.push({l:`RSI OB ${r.toFixed(0)}`,st:"caution",i:"🔥"});
-  if(r!==null&&r<32)s.push({l:`RSI OS ${r.toFixed(0)}`,st:"opportunity",i:"❄️"});
+  if(r!==null&&r>75)s.push({l:`RSI OB ${r.toFixed(0)}`,st:"caution",i:"🔥"});
+  if(r!==null&&r<25)s.push({l:`RSI OS ${r.toFixed(0)}`,st:"opportunity",i:"❄️"});
   if(Math.abs(chg)>4)s.push({l:`Big Move ${chg>0?"+":""}${chg.toFixed(1)}%`,st:chg>0?"strong":"danger",i:chg>0?"📈":"📉"});
   if(m20&&m50&&pm20&&pm50){if(m20>m50&&pm20<=pm50)s.push({l:"Golden Cross",st:"strong",i:"✨"});if(m20<m50&&pm20>=pm50)s.push({l:"Death Cross",st:"danger",i:"☠️"})}
   return s;
@@ -377,6 +377,9 @@ function closeDetail(){
   detailCoin=null;
 }
 
+// CoinGecko days per timeframe selection
+const TF_DAYS={'1m':1,'5m':2,'15m':5,'30m':7,'1h':14,'4h':30,'1D':90,'1W':365};
+
 async function loadDetail(tf){
   detailTF=tf;
   document.querySelectorAll('.dtf').forEach(b=>b.classList.remove('on'));
@@ -387,56 +390,47 @@ async function loadDetail(tf){
   document.getElementById('dStats').innerHTML='<div style="color:#7788aa;font-size:12px">Loading...</div>';
   document.getElementById('dSigsEl').innerHTML='';
 
-  // Try Kraken first
-  const minutes=KR_INT[tf]||1440;
-  let prices=[], source='', candleData=null;
+  const days=TF_DAYS[tf]||30;
+  let prices=[], candleData=null, source='';
+
   try{
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),6000);
-    const kr=await fetch(`https://api.kraken.com/0/public/OHLC?pair=${detailCoin.kr}USD&interval=${minutes}&since=0`,{signal:controller.signal});
-    clearTimeout(timeout);
-    const kd=await kr.json();
-    if(kd.error&&kd.error.length>0)throw new Error(kd.error[0]);
-    const key=Object.keys(kd.result).find(k=>k!=='last');
-    const candles=kd.result[key];
-    const candleData = candles.map(c=>({
-      time: parseInt(c[0]),
-      open: parseFloat(c[1]),
-      high: parseFloat(c[2]),
-      low: parseFloat(c[3]),
-      close: parseFloat(c[4]),
-    })).filter((c,i,arr)=>i===0||c.time>arr[i-1].time);
-    prices=candleData.map(c=>c.close);
-    source=`Kraken · ${tf} · ${prices.length} candles`;
-  }catch(e){
-    // Fallback to CoinGecko daily
-    try{
-      const days=tf==='1W'?365:90;
-      const cgr=await fetch(`https://api.coingecko.com/api/v3/coins/${detailCoin.cg}/market_chart?vs_currency=usd&days=${days}`);
-      const cgd=await cgr.json();
-      prices=cgd.prices?cgd.prices.map(x=>x[1]):[];
-      source=`CoinGecko · Daily fallback · ${prices.length} points`;
-      candleData=null;
-    }catch(e2){
-      document.getElementById('chartTitle').textContent='Failed to load chart data';
-      return;
+    const cgr=await fetch(`https://api.coingecko.com/api/v3/coins/${detailCoin.cg}/market_chart?vs_currency=usd&days=${days}`);
+    if(!cgr.ok)throw new Error('CoinGecko error');
+    const cgd=await cgr.json();
+    prices=cgd.prices?cgd.prices.map(x=>x[1]):[];
+    // Build OHLC candles from price data grouped by tf
+    const rawPrices=cgd.prices||[];
+    if(rawPrices.length>1){
+      // Group into candles
+      const minsPerCandle={'1m':1,'5m':5,'15m':15,'30m':30,'1h':60,'4h':240,'1D':1440,'1W':10080}[tf]||1440;
+      const msPerCandle=minsPerCandle*60*1000;
+      const grouped={};
+      rawPrices.forEach(([ts,p])=>{
+        const bucket=Math.floor(ts/msPerCandle)*Math.floor(msPerCandle/1000);
+        if(!grouped[bucket])grouped[bucket]={time:bucket,open:p,high:p,low:p,close:p};
+        else{grouped[bucket].high=Math.max(grouped[bucket].high,p);grouped[bucket].low=Math.min(grouped[bucket].low,p);grouped[bucket].close=p;}
+      });
+      candleData=Object.values(grouped).sort((a,b)=>a.time-b.time);
     }
+    source=`CoinGecko · ${tf} · ${prices.length} points`;
+  }catch(e){
+    document.getElementById('chartTitle').textContent='Failed to load: '+e.message;
+    return;
   }
 
   detailData=prices;
-  renderDetailChart(candleData||null, prices, tf);
+  renderDetailChart(candleData, prices, tf);
   renderDetailStats(prices,source);
 
-  // Live price refresh every 15s
+  // Live price refresh from CoinGecko every 30s
   liveInterval=setInterval(async()=>{
     try{
-      const kr=await fetch(`https://api.kraken.com/0/public/Ticker?pair=${detailCoin.kr}USD`);
-      const kd=await kr.json();
-      const key=Object.keys(kd.result)[0];
-      const livePrice=parseFloat(kd.result[key].c[0]);
-      document.getElementById('dPrice').textContent='$'+fmt(livePrice);
+      const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${detailCoin.cg}&vs_currencies=usd`);
+      const d=await r.json();
+      const p=d[detailCoin.cg]?.usd;
+      if(p)document.getElementById('dPrice').textContent='$'+fmt(p);
     }catch{}
-  },15000);
+  },30000);
 }
 
 function renderDetailChart(candles, prices, tf){
