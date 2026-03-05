@@ -99,31 +99,74 @@
   </div>
 </div>
 <script>
-// CoinGecko IDs for each symbol
-const COINS = [
-  {sym:"BTC",id:"bitcoin"},{sym:"ETH",id:"ethereum"},{sym:"SOL",id:"solana"},
-  {sym:"BNB",id:"binancecoin"},{sym:"XRP",id:"ripple"},{sym:"ADA",id:"cardano"},
-  {sym:"AVAX",id:"avalanche-2"},{sym:"DOGE",id:"dogecoin"},{sym:"LINK",id:"chainlink"},
-  {sym:"RENDER",id:"render-token"},{sym:"FIL",id:"filecoin"},{sym:"UNI",id:"uniswap"},
-  {sym:"TAO",id:"bittensor"},{sym:"HYPE",id:"hyperliquid"},{sym:"ZEC",id:"zcash"},
-  {sym:"HBAR",id:"hedera-hashgraph"},{sym:"XLM",id:"stellar"},{sym:"ALGO",id:"algorand"},
-  {sym:"SEI",id:"sei-network"},{sym:"SUI",id:"sui"},{sym:"AKT",id:"akash-network"},
-  {sym:"ONDO",id:"ondo-finance"},{sym:"TRX",id:"tron"},{sym:"FET",id:"fetch-ai"},
-  {sym:"XTZ",id:"tezos"},{sym:"ENJ",id:"enjincoin"},{sym:"ICP",id:"internet-computer"},
-  {sym:"NEAR",id:"near"},{sym:"ATOM",id:"cosmos"},{sym:"RUNE",id:"thorchain"},
-  {sym:"WIF",id:"dogwifcoin"},{sym:"PNUT",id:"peanut-the-squirrel"},{sym:"BONK",id:"bonk"},
-  {sym:"PEPE",id:"pepe"},{sym:"POPCAT",id:"popcat"},{sym:"SUPER",id:"superfarm"},
-  {sym:"INJ",id:"injective-protocol"},{sym:"CAKE",id:"pancakeswap-token"},
-  {sym:"OP",id:"optimism"},{sym:"IMX",id:"immutable-x"},{sym:"AIOZ",id:"aioz-network"},
-  {sym:"TURBO",id:"turbo"},{sym:"BLUR",id:"blur"},{sym:"RAY",id:"raydium"},
-  {sym:"TIA",id:"celestia"},{sym:"DOT",id:"polkadot"}
+const COINS=[
+  {sym:"BTC",id:"bitcoin"},
+  {sym:"ETH",id:"ethereum"},
+  {sym:"SOL",id:"solana"},
+  {sym:"BNB",id:"binancecoin"},
+  {sym:"XRP",id:"ripple"},
+  {sym:"ADA",id:"cardano"},
+  {sym:"AVAX",id:"avalanche-2"},
+  {sym:"DOGE",id:"dogecoin"},
+  {sym:"LINK",id:"chainlink"},
+  {sym:"RENDER",id:"render-token"},
+  {sym:"FIL",id:"filecoin"},
+  {sym:"UNI",id:"uniswap"},
+  {sym:"TAO",id:"bittensor"},
+  {sym:"HYPE",id:"hyperliquid"},
+  {sym:"ZEC",id:"zcash"},
+  {sym:"HBAR",id:"hedera-hashgraph"},
+  {sym:"XLM",id:"stellar"},
+  {sym:"ALGO",id:"algorand"},
+  {sym:"SEI",id:"sei-network"},
+  {sym:"SUI",id:"sui"},
+  {sym:"AKT",id:"akash-network"},
+  {sym:"ONDO",id:"ondo-finance"},
+  {sym:"TRX",id:"tron"},
+  {sym:"FET",id:"fetch-ai"},
+  {sym:"XTZ",id:"tezos"},
+  {sym:"ENJ",id:"enjincoin"},
+  {sym:"ICP",id:"internet-computer"},
+  {sym:"NEAR",id:"near"},
+  {sym:"ATOM",id:"cosmos"},
+  {sym:"RUNE",id:"thorchain"},
+  {sym:"WIF",id:"dogwifcoin"},
+  {sym:"PNUT",id:"peanut-the-squirrel"},
+  {sym:"BONK",id:"bonk"},
+  {sym:"PEPE",id:"pepe"},
+  {sym:"POPCAT",id:"popcat"},
+  {sym:"SUPER",id:"superfarm"},
+  {sym:"INJ",id:"injective-protocol"},
+  {sym:"CAKE",id:"pancakeswap-token"},
+  {sym:"OP",id:"optimism"},
+  {sym:"IMX",id:"immutable-x"},
+  {sym:"AIOZ",id:"aioz-network"},
+  {sym:"TURBO",id:"turbo"},
+  {sym:"BLUR",id:"blur"},
+  {sym:"RAY",id:"raydium"},
+  {sym:"TIA",id:"celestia"},
+  {sym:"DOT",id:"polkadot"},
+  {sym:"BIGTIME",id:"big-time"},
+  {sym:"TRUMP",id:"official-trump"},
+  {sym:"MELANIA",id:"melania-meme"},
+  {sym:"JUNO",id:"juno-network"},
+  {sym:"FARTCOIN",id:"fartcoin"},
+  {sym:"00",id:"zero-knowledge"},
+  {sym:"MOVR",id:"moonriver"},
+  {sym:"SC",id:"siacoin"},
+  {sym:"TRU",id:"truefi"},
+  {sym:"OSMO",id:"osmosis"},
+  {sym:"GIGA",id:"gigachad-2"},
+  {sym:"BEAM",id:"beam-2"},
+  {sym:"SYRUP",id:"maplesyrup"},
+  {sym:"PUMP",id:"pump-fun"}
 ];
 
 let all=[],filt='all';
 const fmt=n=>{if(n==null||isNaN(n))return'N/A';if(n>=1000)return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=1)return n.toFixed(2);if(n>=0.01)return n.toFixed(4);return n.toFixed(8)};
 function calcRSI(p,per=14){if(!p||p.length<per+1)return null;let g=0,l=0;for(let i=p.length-per;i<p.length;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d)}const al=l/per;return al===0?100:100-100/(1+(g/per)/al)}
 function calcMA(p,per){if(!p||p.length<per)return null;return p.slice(-per).reduce((a,b)=>a+b,0)/per}
-function calcSigs(prices,chg,vs){
+function calcSigs(prices,chg){
   if(!prices||prices.length<5)return[];
   const s=[],cur=prices[prices.length-1],hi=Math.max(...prices),lo=Math.min(...prices);
   const r=calcRSI(prices),m20=calcMA(prices,Math.min(20,prices.length)),m50=calcMA(prices,Math.min(50,prices.length));
@@ -133,7 +176,6 @@ function calcSigs(prices,chg,vs){
   if(r!==null&&r>68)s.push({l:`RSI OB ${r.toFixed(0)}`,st:"caution",i:"🔥"});
   if(r!==null&&r<32)s.push({l:`RSI OS ${r.toFixed(0)}`,st:"opportunity",i:"❄️"});
   if(Math.abs(chg)>4)s.push({l:`Big Move ${chg>0?"+":""}${chg.toFixed(1)}%`,st:chg>0?"strong":"danger",i:chg>0?"📈":"📉"});
-  if(vs&&vs>1.8)s.push({l:`Vol ${vs.toFixed(1)}x`,st:"medium",i:"📊"});
   if(m20&&m50&&pm20&&pm50){if(m20>m50&&pm20<=pm50)s.push({l:"Golden Cross",st:"strong",i:"✨"});if(m20<m50&&pm20>=pm50)s.push({l:"Death Cross",st:"danger",i:"☠️"})}
   return s;
 }
@@ -163,18 +205,15 @@ async function scan(){
   btn.disabled=true;ico.className='spin';pb.style.display='block';pf.style.width='5%';sub.textContent='Fetching prices...';
   document.getElementById('list').innerHTML='<div class="empty"><div style="font-size:36px;margin-bottom:12px">📡</div>Scanning markets...</div>';
   try{
-    // Fetch prices from CoinGecko - no API key needed, no geo restrictions
     const ids=COINS.map(c=>c.id).join(',');
     const r=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
-    if(!r.ok)throw new Error(`API error ${r.status}`);
+    if(!r.ok)throw new Error(`CoinGecko error ${r.status}`);
     const prices=await r.json();
-    pf.style.width='40%';
+    pf.style.width='30%';
     sub.textContent='Fetching chart data...';
-
-    // Fetch 30d market chart for each coin in batches
     const results=[];
-    for(let i=0;i<COINS.length;i+=6){
-      const batch=COINS.slice(i,i+6);
+    for(let i=0;i<COINS.length;i+=5){
+      const batch=COINS.slice(i,i+5);
       const br=await Promise.all(batch.map(async coin=>{
         const pd=prices[coin.id];
         if(!pd)return{sym:coin.sym,price:0,chg:0,prices:[],rsi:null,ma20:null,ma50:null,signals:[]};
@@ -184,16 +223,15 @@ async function scan(){
           const pp=cd.prices?cd.prices.map(x=>x[1]):[];
           const chg=pd.usd_24h_change||0;
           const rsi=calcRSI(pp),m20=calcMA(pp,Math.min(20,pp.length)),m50=calcMA(pp,Math.min(50,pp.length));
-          return{sym:coin.sym,price:pd.usd,chg,prices:pp,rsi,ma20:m20,ma50:m50,signals:calcSigs(pp,chg,null)};
+          return{sym:coin.sym,price:pd.usd,chg,prices:pp,rsi,ma20:m20,ma50:m50,signals:calcSigs(pp,chg)};
         }catch{
-          return{sym:coin.sym,price:pd.usd,chg:pd.usd_24h_change||0,prices:[],rsi:null,ma20:null,ma50:null,signals:[]};
+          return{sym:coin.sym,price:pd.usd||0,chg:pd.usd_24h_change||0,prices:[],rsi:null,ma20:null,ma50:null,signals:[]};
         }
       }));
       results.push(...br);
-      pf.style.width=`${40+(results.length/COINS.length)*55}%`;
+      pf.style.width=`${30+(results.length/COINS.length)*65}%`;
       sub.textContent=`Scanned ${results.length}/${COINS.length}...`;
-      // Small delay to respect CoinGecko rate limits
-      if(i+6<COINS.length)await new Promise(res=>setTimeout(res,1200));
+      if(i+5<COINS.length)await new Promise(res=>setTimeout(res,1500));
     }
     results.sort((a,b)=>b.signals.length-a.signals.length);
     all=results;pf.style.width='100%';
