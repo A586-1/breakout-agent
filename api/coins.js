@@ -8,7 +8,7 @@ const SYMBOLS = [
   "TURBOUSDT","BLURUSDT","RAYUSDT","TIAUSDT","DOTUSDT"
 ];
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   try {
     const symbolsParam = JSON.stringify(SYMBOLS);
