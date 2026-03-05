@@ -30,6 +30,10 @@
     .flts{display:flex;gap:8px;margin-bottom:12px}
     .fb{flex:1;padding:9px 0;border-radius:8px;background:transparent;border:1px solid #1a2230;color:#3a4a5a;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:1px}
     .fb.on{background:#00ff9515;border-color:#00ff9550;color:#00ff95}
+    .tfs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+    .tfs::-webkit-scrollbar{display:none}
+    .tf{flex:0 0 auto;padding:7px 10px;border-radius:8px;background:transparent;border:1px solid #1a2230;color:#3a4a5a;font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:1px}
+    .tf.on{background:#00bfff15;border-color:#00bfff50;color:#00bfff}
     .div{height:1px;background:linear-gradient(90deg,transparent,#1e2530,transparent);margin-bottom:12px}
     .coins{padding:0 16px}
     .card{background:#0d1117;border:1px solid #1e2530;border-radius:16px;padding:16px;margin-bottom:12px;animation:fadeIn 0.3s ease both}
@@ -38,7 +42,7 @@
     .cname{display:flex;align-items:center;gap:8px}
     .csym{font-weight:700;font-size:20px}
     .abadge{background:#00ff9520;color:#00ff95;border:1px solid #00ff9540;border-radius:20px;padding:1px 6px;font-size:10px}
-    .cprice{color:#5a6a7a;font-size:15px;margin-top:4px}
+    .cprice{color:#c9d5e0;font-size:18px;margin-top:4px;font-weight:700}
     .cright{text-align:right}
     .cchg{font-size:18px;font-weight:700;margin-bottom:4px}
     .cstats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
@@ -91,6 +95,16 @@
       <button class="fb" id="s3" onclick="setS('chg_asc')">BOT %</button>
       <button class="fb" id="s4" onclick="setS('rsi_desc')">RSI HI</button>
       <button class="fb" id="s5" onclick="setS('rsi_asc')">RSI LO</button>
+    </div>
+    <div class="tfs" id="tfs" style="display:none;margin-top:-4px">
+      <button class="tf" id="tf1m" onclick="setTF('1m')">1m</button>
+      <button class="tf" id="tf5m" onclick="setTF('5m')">5m</button>
+      <button class="tf" id="tf15m" onclick="setTF('15m')">15m</button>
+      <button class="tf" id="tf1h" onclick="setTF('1h')">1h</button>
+      <button class="tf" id="tf4h" onclick="setTF('4h')">4h</button>
+      <button class="tf on" id="tf1d" onclick="setTF('1d')">1D</button>
+      <button class="tf" id="tf1w" onclick="setTF('1w')">1W</button>
+      <button class="tf" id="tf1M" onclick="setTF('1M')">1M</button>
     </div>
     <div class="div"></div>
   </div>
@@ -169,7 +183,7 @@ const COINS=[
   {sym:"PUMP",id:"pump-fun"}
 ];
 
-let all=[],filt='all',sortBy='signals';
+let all=[],filt='all',sortBy='signals',tf='1d';
 const fmt=n=>{if(n==null||isNaN(n))return'N/A';if(n>=1000)return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=1)return n.toFixed(2);if(n>=0.01)return n.toFixed(4);return n.toFixed(8)};
 function calcRSI(p,per=14){if(!p||p.length<per+1)return null;let g=0,l=0;for(let i=p.length-per;i<p.length;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d)}const al=l/per;return al===0?100:100-100/(1+(g/per)/al)}
 function calcMA(p,per){if(!p||p.length<per)return null;return p.slice(-per).reduce((a,b)=>a+b,0)/per}
@@ -208,12 +222,23 @@ function sortData(d){
 function render(){const el=document.getElementById('list');let d=all;if(filt==='alerts')d=all.filter(c=>c.signals.length>0);if(filt==='2+')d=all.filter(c=>c.signals.length>=2);d=sortData(d);el.innerHTML=d.length?d.map((c,i)=>cardHTML(c,i)).join(''):`<div class="empty">No coins match this filter.</div>`}
 function setF(f){filt=f;document.querySelectorAll('#flts .fb').forEach(b=>b.classList.remove('on'));document.getElementById({all:'fa',alerts:'fal','2+':'f2'}[f]).classList.add('on');render()}
 function setS(s){sortBy=s;document.querySelectorAll('#sorts .fb').forEach(b=>b.classList.remove('on'));document.getElementById({signals:'s1',chg_desc:'s2',chg_asc:'s3',rsi_desc:'s4',rsi_asc:'s5'}[s]).classList.add('on');render()}
+function setTF(t){tf=t;document.querySelectorAll('.tf').forEach(b=>b.classList.remove('on'));document.getElementById('tf'+t).classList.add('on');scan()}
+const TF_CONFIG={
+  '1m': {interval:'1m', days:1,    label:'1 Min',   candles:100},
+  '5m': {interval:'5m', days:2,    label:'5 Min',   candles:100},
+  '15m':{interval:'15m',days:5,    label:'15 Min',  candles:100},
+  '1h': {interval:'1h', days:14,   label:'1 Hour',  candles:100},
+  '4h': {interval:'4h', days:30,   label:'4 Hour',  candles:100},
+  '1d': {interval:'daily',days:52, label:'1 Day',   candles:52},
+  '1w': {interval:'weekly',days:365,label:'1 Week', candles:52},
+  '1M': {interval:'monthly',days:730,label:'1 Month',candles:24}
+};
 function updateStats(){
   const ac=all.filter(c=>c.signals.length>0).length,ts=all.reduce((a,c)=>a+c.signals.length,0),sc=all.filter(c=>c.signals.some(s=>s.st==='strong')).length;
   document.getElementById('vs').textContent=sc;document.getElementById('vsi').textContent=ts;document.getElementById('val').textContent=ac;document.getElementById('vto').textContent=all.length;
   if(ac>0){document.getElementById('vsi').classList.add('g');document.getElementById('val').classList.add('g')}
   document.getElementById('fal').textContent=`🔔 ALERTS (${ac})`;document.getElementById('fa').textContent=`ALL (${all.length})`;
-  document.getElementById('stats').style.display='flex';document.getElementById('flts').style.display='flex';document.getElementById('sorts').style.display='flex';
+  document.getElementById('stats').style.display='flex';document.getElementById('flts').style.display='flex';document.getElementById('sorts').style.display='flex';document.getElementById('tfs').style.display='flex';
 }
 async function scan(){
   const btn=document.getElementById('rbtn'),ico=document.getElementById('rico'),pb=document.getElementById('pb'),pf=document.getElementById('pf'),sub=document.getElementById('sub');
@@ -233,7 +258,8 @@ async function scan(){
         const pd=prices[coin.id];
         if(!pd)return{sym:coin.sym,price:0,chg:0,prices:[],rsi:null,ma20:null,ma50:null,signals:[]};
         try{
-          const cr=await fetch(`https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=52&interval=daily`);
+          const cfg=TF_CONFIG[tf];
+          const cr=await fetch(`https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=${cfg.days}&interval=${cfg.interval}`);
           const cd=await cr.json();
           const pp=cd.prices?cd.prices.map(x=>x[1]):[];
           const chg=pd.usd_24h_change||0;
@@ -250,7 +276,7 @@ async function scan(){
     }
     results.sort((a,b)=>b.signals.length-a.signals.length);
     all=results;pf.style.width='100%';
-    sub.textContent=`Live · ${new Date().toLocaleTimeString()}`;
+    sub.textContent=`${TF_CONFIG[tf].label} · ${new Date().toLocaleTimeString()}`;
     updateStats();render();
   }catch(e){
     document.getElementById('list').innerHTML=`<div class="errbx">${e.message}<button class="errbt" onclick="scan()">↺ Retry</button></div>`;
