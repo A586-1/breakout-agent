@@ -83,7 +83,14 @@
     <div class="flts" id="flts" style="display:none">
       <button class="fb on" id="fa" onclick="setF('all')">ALL</button>
       <button class="fb" id="fal" onclick="setF('alerts')">🔔 ALERTS</button>
-      <button class="fb" id="f2" onclick="setF('2+')">2+ SIGNALS</button>
+      <button class="fb" id="f2" onclick="setF('2+')">2+ SIGS</button>
+    </div>
+    <div class="flts" id="sorts" style="display:none;margin-top:-4px">
+      <button class="fb on" id="s1" onclick="setS('signals')">🔥 SIGNALS</button>
+      <button class="fb" id="s2" onclick="setS('chg_desc')">📈 TOP %</button>
+      <button class="fb" id="s3" onclick="setS('chg_asc')">📉 BOT %</button>
+      <button class="fb" id="s4" onclick="setS('rsi_desc')">RSI ↑</button>
+      <button class="fb" id="s5" onclick="setS('rsi_asc')">RSI ↓</button>
     </div>
     <div class="div"></div>
   </div>
@@ -162,7 +169,7 @@ const COINS=[
   {sym:"PUMP",id:"pump-fun"}
 ];
 
-let all=[],filt='all';
+let all=[],filt='all',sortBy='signals';
 const fmt=n=>{if(n==null||isNaN(n))return'N/A';if(n>=1000)return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=1)return n.toFixed(2);if(n>=0.01)return n.toFixed(4);return n.toFixed(8)};
 function calcRSI(p,per=14){if(!p||p.length<per+1)return null;let g=0,l=0;for(let i=p.length-per;i<p.length;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d)}const al=l/per;return al===0?100:100-100/(1+(g/per)/al)}
 function calcMA(p,per){if(!p||p.length<per)return null;return p.slice(-per).reduce((a,b)=>a+b,0)/per}
@@ -191,14 +198,22 @@ function cardHTML(c,i){
 <div class="cstats">${c.rsi!=null?`<span class="cs">RSI <span class="${rc}">${c.rsi.toFixed(1)}</span></span>`:''} ${c.ma20?`<span class="cs">MA20 <span>$${fmt(c.ma20)}</span></span>`:''} ${c.ma50?`<span class="cs">MA50 <span>$${fmt(c.ma50)}</span></span>`:''}</div>
 ${has?`<div class="sigs">${c.signals.map(badge).join('')}</div><button class="aibtn" onclick='openAI(${JSON.stringify(c).replace(/'/g,"&#39;")})'>⚡ ASK AI ANALYST</button>`:''}</div>`;
 }
-function render(){const el=document.getElementById('list');let d=all;if(filt==='alerts')d=all.filter(c=>c.signals.length>0);if(filt==='2+')d=all.filter(c=>c.signals.length>=2);el.innerHTML=d.length?d.map((c,i)=>cardHTML(c,i)).join(''):`<div class="empty">No coins match this filter.</div>`}
-function setF(f){filt=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));document.getElementById({all:'fa',alerts:'fal','2+':'f2'}[f]).classList.add('on');render()}
+function sortData(d){
+  if(sortBy==='chg_desc')return[...d].sort((a,b)=>(b.chg||0)-(a.chg||0));
+  if(sortBy==='chg_asc')return[...d].sort((a,b)=>(a.chg||0)-(b.chg||0));
+  if(sortBy==='rsi_desc')return[...d].sort((a,b)=>(b.rsi||0)-(a.rsi||0));
+  if(sortBy==='rsi_asc')return[...d].sort((a,b)=>(a.rsi||50)-(b.rsi||50));
+  return[...d].sort((a,b)=>b.signals.length-a.signals.length);
+}
+function render(){const el=document.getElementById('list');let d=all;if(filt==='alerts')d=all.filter(c=>c.signals.length>0);if(filt==='2+')d=all.filter(c=>c.signals.length>=2);d=sortData(d);el.innerHTML=d.length?d.map((c,i)=>cardHTML(c,i)).join(''):`<div class="empty">No coins match this filter.</div>`}
+function setF(f){filt=f;document.querySelectorAll('#flts .fb').forEach(b=>b.classList.remove('on'));document.getElementById({all:'fa',alerts:'fal','2+':'f2'}[f]).classList.add('on');render()}
+function setS(s){sortBy=s;document.querySelectorAll('#sorts .fb').forEach(b=>b.classList.remove('on'));document.getElementById({signals:'s1',chg_desc:'s2',chg_asc:'s3',rsi_desc:'s4',rsi_asc:'s5'}[s]).classList.add('on');render()}
 function updateStats(){
   const ac=all.filter(c=>c.signals.length>0).length,ts=all.reduce((a,c)=>a+c.signals.length,0),sc=all.filter(c=>c.signals.some(s=>s.st==='strong')).length;
   document.getElementById('vs').textContent=sc;document.getElementById('vsi').textContent=ts;document.getElementById('val').textContent=ac;document.getElementById('vto').textContent=all.length;
   if(ac>0){document.getElementById('vsi').classList.add('g');document.getElementById('val').classList.add('g')}
   document.getElementById('fal').textContent=`🔔 ALERTS (${ac})`;document.getElementById('fa').textContent=`ALL (${all.length})`;
-  document.getElementById('stats').style.display='flex';document.getElementById('flts').style.display='flex';
+  document.getElementById('stats').style.display='flex';document.getElementById('flts').style.display='flex';document.getElementById('sorts').style.display='flex';
 }
 async function scan(){
   const btn=document.getElementById('rbtn'),ico=document.getElementById('rico'),pb=document.getElementById('pb'),pf=document.getElementById('pf'),sub=document.getElementById('sub');
