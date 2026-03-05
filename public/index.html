@@ -1,6 +1,197 @@
-{
-  "version": 2,
-  "routes": [
-    { "src": "/(.*)", "dest": "/public/index.html" }
-  ]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>BreakoutAgent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#07090d;color:#fff;font-family:'Space Mono',monospace}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    #app{max-width:480px;margin:0 auto;padding-bottom:60px}
+    .hdr{padding:20px 16px 12px;position:sticky;top:0;z-index:10;background:#07090d}
+    .hdr-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+    .ttl{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;letter-spacing:2px;text-shadow:0 0 30px #00ff9530}
+    .ttl span{color:#00ff95}
+    .sub{color:#2a4a3a;font-size:10px;margin-top:3px}
+    .rbtn{background:transparent;border:1px solid #1e2530;border-radius:10px;padding:8px 12px;color:#5a6a7a;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px}
+    .rbtn:disabled{color:#00ff9580;cursor:not-allowed}
+    .spin{animation:spin 0.8s linear infinite;display:inline-block}
+    .pb{height:2px;background:#1e2530;border-radius:2px;margin:10px 0;overflow:hidden}
+    .pf{height:100%;background:linear-gradient(90deg,#00ff95,#00bfff);border-radius:2px;transition:width 0.3s}
+    .stats{display:flex;gap:8px;margin:12px 0}
+    .stat{flex:1;background:#0a0f14;border:1px solid #141c24;border-radius:10px;padding:10px 0;text-align:center}
+    .sv{font-family:'Orbitron',monospace;font-size:20px;font-weight:700}
+    .sv.g{color:#00ff95;text-shadow:0 0 12px #00ff9540}
+    .sl{color:#2a3a4a;font-size:9px;letter-spacing:1px;margin-top:2px}
+    .flts{display:flex;gap:8px;margin-bottom:12px}
+    .fb{flex:1;padding:9px 0;border-radius:8px;background:transparent;border:1px solid #1a2230;color:#3a4a5a;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:1px}
+    .fb.on{background:#00ff9515;border-color:#00ff9550;color:#00ff95}
+    .div{height:1px;background:linear-gradient(90deg,transparent,#1e2530,transparent);margin-bottom:12px}
+    .coins{padding:0 16px}
+    .card{background:#0d1117;border:1px solid #1e2530;border-radius:16px;padding:16px;margin-bottom:12px;animation:fadeIn 0.3s ease both}
+    .card.hot{background:linear-gradient(135deg,#0d1117,#0d1a0f);border-color:#00ff9540;box-shadow:0 0 20px #00ff9510}
+    .ctop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+    .cname{display:flex;align-items:center;gap:8px}
+    .csym{font-weight:700;font-size:16px}
+    .abadge{background:#00ff9520;color:#00ff95;border:1px solid #00ff9540;border-radius:20px;padding:1px 6px;font-size:10px}
+    .cprice{color:#5a6a7a;font-size:12px;margin-top:2px}
+    .cright{text-align:right}
+    .cchg{font-size:14px;font-weight:700;margin-bottom:4px}
+    .cstats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+    .cs{color:#5a6a7a;font-size:11px}
+    .cs span{color:#7a8a9a}
+    .cs span.ht{color:#ff8c00}
+    .cs span.cl{color:#00bfff}
+    .sigs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;margin-top:4px}
+    .sig{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;white-space:nowrap}
+    .aibtn{background:transparent;border:1px solid #00ff9540;color:#00ff95;border-radius:8px;padding:7px 14px;font-size:12px;font-family:'Space Mono',monospace;cursor:pointer;width:100%;letter-spacing:1px}
+    .empty{text-align:center;padding:50px 20px;color:#2a3a4a;font-size:13px;line-height:2}
+    .errbx{background:#ff4d4d10;border:1px solid #ff4d4d40;border-radius:12px;padding:20px;text-align:center;color:#ff4d4d;font-size:12px;line-height:1.8;margin:0 16px 16px}
+    .errbt{display:block;margin:12px auto 0;background:#ff4d4d20;border:1px solid #ff4d4d40;color:#ff4d4d;border-radius:8px;padding:8px 20px;font-family:'Space Mono',monospace;cursor:pointer}
+    .ov{position:fixed;inset:0;background:#000000bb;z-index:100;display:flex;align-items:flex-end;padding:16px}
+    .pan{background:#0d1117;border:1px solid #00ff9550;border-radius:20px;padding:20px;width:100%;max-width:480px;margin:0 auto}
+    .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .pt{color:#00ff95;font-weight:700}
+    .xbtn{background:none;border:none;color:#5a6a7a;font-size:22px;cursor:pointer}
+    .pb2{background:#070d12;border-radius:12px;padding:16px;min-height:80px;color:#c9d5e0;font-size:13px;line-height:1.8;border:1px solid #1a2230}
+    .ana{color:#00ff9570;animation:pulse 1s infinite}
+    .disc{color:#1e2e20;font-size:10px;margin-top:10px;text-align:center}
+    .ftr{text-align:center;padding:20px 16px;color:#1a2a1a;font-size:10px;line-height:1.8}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-row">
+      <div>
+        <div class="ttl">BREAKOUT<span>AGENT</span></div>
+        <div class="sub" id="sub">Connecting to Binance...</div>
+      </div>
+      <button class="rbtn" id="rbtn" onclick="scan()"><span id="rico">↺</span> REFRESH</button>
+    </div>
+    <div class="pb" id="pb" style="display:none"><div class="pf" id="pf" style="width:0%"></div></div>
+    <div class="stats" id="stats" style="display:none">
+      <div class="stat"><div class="sv" id="vs">0</div><div class="sl">STRONG</div></div>
+      <div class="stat"><div class="sv" id="vsi">0</div><div class="sl">SIGNALS</div></div>
+      <div class="stat"><div class="sv" id="val">0</div><div class="sl">ALERTS</div></div>
+      <div class="stat"><div class="sv" id="vto">0</div><div class="sl">TOTAL</div></div>
+    </div>
+    <div class="flts" id="flts" style="display:none">
+      <button class="fb on" id="fa" onclick="setF('all')">ALL</button>
+      <button class="fb" id="fal" onclick="setF('alerts')">🔔 ALERTS</button>
+      <button class="fb" id="f2" onclick="setF('2+')">2+ SIGNALS</button>
+    </div>
+    <div class="div"></div>
+  </div>
+  <div class="coins" id="list"><div class="empty"><div style="font-size:36px;margin-bottom:12px">📡</div>Loading watchlist...</div></div>
+  <div class="ftr">Binance live data · Auto-refreshes every 5 min<br/>NOT FINANCIAL ADVICE</div>
+</div>
+
+<div class="ov" id="ov" style="display:none" onclick="closeAI()">
+  <div class="pan" onclick="event.stopPropagation()">
+    <div class="ph"><span class="pt" id="ptitle">⚡ AI ANALYST</span><button class="xbtn" onclick="closeAI()">✕</button></div>
+    <div id="psigs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+    <div class="pb2" id="pbody"><span class="ana">● Analyzing...</span></div>
+    <div class="disc">NOT FINANCIAL ADVICE · INFORMATIONAL ONLY</div>
+  </div>
+</div>
+
+<script>
+const SYMS=["BTC","ETH","SOL","BNB","XRP","ADA","AVAX","DOGE","LINK","RENDER","FIL","UNI","TAO","HYPE","ZEC","HBAR","XLM","ALGO","SEI","SUI","AKT","ONDO","TRX","FET","XTZ","ENJ","ICP","NEAR","ATOM","RUNE","WIF","PNUT","BONK","PEPE","POPCAT","SUPER","INJ","CAKE","OP","IMX","AIOZ","TURBO","BLUR","RAY","TIA","DOT"];
+let all=[],filt='all';
+const fmt=n=>{if(n==null||isNaN(n))return'N/A';if(n>=1000)return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=1)return n.toFixed(2);if(n>=0.01)return n.toFixed(4);return n.toFixed(8)};
+function calcRSI(p,per=14){if(!p||p.length<per+1)return null;let g=0,l=0;for(let i=p.length-per;i<p.length;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d)}const al=l/per;return al===0?100:100-100/(1+(g/per)/al)}
+function calcMA(p,per){if(!p||p.length<per)return null;return p.slice(-per).reduce((a,b)=>a+b,0)/per}
+function calcSigs(prices,chg,vs){
+  if(!prices||prices.length<5)return[];
+  const s=[],cur=prices[prices.length-1],hi=Math.max(...prices),lo=Math.min(...prices);
+  const r=calcRSI(prices),m20=calcMA(prices,Math.min(20,prices.length)),m50=calcMA(prices,Math.min(50,prices.length));
+  const pm20=calcMA(prices.slice(0,-1),Math.min(20,prices.length-1)),pm50=calcMA(prices.slice(0,-1),Math.min(50,prices.length-1));
+  if(cur>=hi*0.985)s.push({l:"30D High Breakout",st:"strong",i:"🚀"});
+  if(cur<=lo*1.015)s.push({l:"30D Low Break",st:"danger",i:"💥"});
+  if(r!==null&&r>68)s.push({l:`RSI OB ${r.toFixed(0)}`,st:"caution",i:"🔥"});
+  if(r!==null&&r<32)s.push({l:`RSI OS ${r.toFixed(0)}`,st:"opportunity",i:"❄️"});
+  if(Math.abs(chg)>4)s.push({l:`Big Move ${chg>0?"+":""}${chg.toFixed(1)}%`,st:chg>0?"strong":"danger",i:chg>0?"📈":"📉"});
+  if(vs&&vs>1.8)s.push({l:`Vol ${vs.toFixed(1)}x`,st:"medium",i:"📊"});
+  if(m20&&m50&&pm20&&pm50){if(m20>m50&&pm20<=pm50)s.push({l:"Golden Cross",st:"strong",i:"✨"});if(m20<m50&&pm20>=pm50)s.push({l:"Death Cross",st:"danger",i:"☠️"})}
+  return s;
 }
+const SC={strong:["#00ff9520","#00ff95"],danger:["#ff4d4d20","#ff4d4d"],caution:["#ff8c0020","#ff8c00"],opportunity:["#00bfff20","#00bfff"],medium:["#ffd70020","#ffd700"]};
+const badge=s=>{const[bg,c]=SC[s.st]||SC.medium;return`<span class="sig" style="background:${bg};border:1px solid ${c};color:${c}">${s.i} ${s.l}</span>`};
+function spark(p,col){if(!p||p.length<2)return'';const mn=Math.min(...p),mx=Math.max(...p),r=mx-mn||1,w=80,h=28;const pts=p.map((v,i)=>`${(i/(p.length-1))*w},${h-((v-mn)/r)*h}`).join(' ');return`<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`}
+function cardHTML(c,i){
+  const up=(c.chg||0)>=0,col=up?"#00ff95":"#ff4d4d",has=c.signals.length>0;
+  const rc=c.rsi>68?"ht":c.rsi<32?"cl":"";
+  return`<div class="card ${has?"hot":""}" style="animation-delay:${i*0.04}s">
+<div class="ctop"><div><div class="cname"><span class="csym">${c.sym}</span>${has?'<span class="abadge">● ALERT</span>':''}</div><div class="cprice">$${fmt(c.price)}</div></div>
+<div class="cright"><div class="cchg" style="color:${col}">${up?"+":""}${(c.chg||0).toFixed(2)}%</div>${spark(c.prices,col)}</div></div>
+<div class="cstats">${c.rsi!=null?`<span class="cs">RSI <span class="${rc}">${c.rsi.toFixed(1)}</span></span>`:''} ${c.ma20?`<span class="cs">MA20 <span>$${fmt(c.ma20)}</span></span>`:''} ${c.ma50?`<span class="cs">MA50 <span>$${fmt(c.ma50)}</span></span>`:''}</div>
+${has?`<div class="sigs">${c.signals.map(badge).join('')}</div><button class="aibtn" onclick='openAI(${JSON.stringify(c).replace(/'/g,"&#39;")})'>⚡ ASK AI ANALYST</button>`:''}</div>`;
+}
+function render(){const el=document.getElementById('list');let d=all;if(filt==='alerts')d=all.filter(c=>c.signals.length>0);if(filt==='2+')d=all.filter(c=>c.signals.length>=2);el.innerHTML=d.length?d.map((c,i)=>cardHTML(c,i)).join(''):`<div class="empty">No coins match this filter.</div>`}
+function setF(f){filt=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));document.getElementById({all:'fa',alerts:'fal','2+':'f2'}[f]).classList.add('on');render()}
+function updateStats(){
+  const ac=all.filter(c=>c.signals.length>0).length,ts=all.reduce((a,c)=>a+c.signals.length,0),sc=all.filter(c=>c.signals.some(s=>s.st==='strong')).length;
+  document.getElementById('vs').textContent=sc;document.getElementById('vsi').textContent=ts;document.getElementById('val').textContent=ac;document.getElementById('vto').textContent=all.length;
+  if(ac>0){document.getElementById('vsi').classList.add('g');document.getElementById('val').classList.add('g')}
+  document.getElementById('fal').textContent=`🔔 ALERTS (${ac})`;document.getElementById('fa').textContent=`ALL (${all.length})`;
+  document.getElementById('stats').style.display='flex';document.getElementById('flts').style.display='flex';
+}
+async function scan(){
+  const btn=document.getElementById('rbtn'),ico=document.getElementById('rico'),pb=document.getElementById('pb'),pf=document.getElementById('pf'),sub=document.getElementById('sub');
+  btn.disabled=true;ico.className='spin';pb.style.display='block';pf.style.width='5%';sub.textContent='Fetching prices...';
+  document.getElementById('list').innerHTML='<div class="empty"><div style="font-size:36px;margin-bottom:12px">📡</div>Scanning markets...</div>';
+  try{
+    const sp=JSON.stringify(SYMS.map(s=>s+'USDT'));
+    const tr=await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(sp)}`);
+    if(!tr.ok)throw new Error(`Binance error ${tr.status}`);
+    const tickers=await tr.json();
+    pf.style.width='25%';
+    const results=[];
+    for(let i=0;i<tickers.length;i+=8){
+      const batch=tickers.slice(i,i+8);
+      const br=await Promise.all(batch.map(async t=>{
+        const sym=t.symbol.replace('USDT','');
+        try{
+          const kr=await fetch(`https://api.binance.com/api/v3/klines?symbol=${t.symbol}&interval=1d&limit=52`);
+          const kl=await kr.json();
+          const prices=kl.map(k=>parseFloat(k[4])),vols=kl.map(k=>parseFloat(k[5]));
+          const avgv=vols.slice(0,-1).reduce((a,b)=>a+b,0)/(vols.length-1),vs=vols[vols.length-1]/avgv;
+          const chg=parseFloat(t.priceChangePercent),r=calcRSI(prices),m20=calcMA(prices,Math.min(20,prices.length)),m50=calcMA(prices,Math.min(50,prices.length));
+          return{sym,price:parseFloat(t.lastPrice),chg,prices,rsi:r,ma20:m20,ma50:m50,signals:calcSigs(prices,chg,vs)};
+        }catch{return{sym,price:parseFloat(t.lastPrice),chg:parseFloat(t.priceChangePercent),prices:[],rsi:null,ma20:null,ma50:null,signals:[]}}
+      }));
+      results.push(...br);
+      pf.style.width=`${25+(results.length/tickers.length)*70}%`;
+      sub.textContent=`Scanned ${results.length}/${tickers.length}...`;
+    }
+    results.sort((a,b)=>b.signals.length-a.signals.length);
+    all=results;pf.style.width='100%';
+    sub.textContent=`Live · ${new Date().toLocaleTimeString()}`;
+    updateStats();render();
+  }catch(e){
+    document.getElementById('list').innerHTML=`<div class="errbx">${e.message}<button class="errbt" onclick="scan()">↺ Retry</button></div>`;
+    sub.textContent='Scan failed';
+  }
+  btn.disabled=false;ico.className='';
+  setTimeout(()=>{pb.style.display='none';pf.style.width='0%'},1000);
+}
+function openAI(c){
+  document.getElementById('ov').style.display='flex';
+  document.getElementById('ptitle').textContent=`⚡ AI ANALYST — ${c.sym}`;
+  document.getElementById('psigs').innerHTML=c.signals.map(badge).join('');
+  document.getElementById('pbody').innerHTML='<span class="ana">● Analyzing...</span>';
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Crypto analyst. 3-4 sentences, risk level Low/Medium/High. No disclaimers.\n${c.sym} $${fmt(c.price)} 24h:${(c.chg||0).toFixed(2)}% RSI:${c.rsi?c.rsi.toFixed(1):'N/A'} MA20:$${fmt(c.ma20)} MA50:$${fmt(c.ma50)}\nSignals: ${c.signals.map(s=>s.l).join(', ')}`}]})})
+  .then(r=>r.json()).then(d=>{document.getElementById('pbody').textContent=d.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'No analysis.'})
+  .catch(e=>{document.getElementById('pbody').textContent='AI unavailable: '+e.message});
+}
+function closeAI(){document.getElementById('ov').style.display='none'}
+scan();
+setInterval(scan,5*60*1000);
+</script>
+</body>
+</html>
