@@ -159,6 +159,10 @@
       <div class="chart-title" id="chartTitle">PRICE CHART</div>
       <canvas id="priceChart" height="160"></canvas>
     </div>
+    <div class="chart-wrap" style="margin-bottom:16px">
+      <div class="chart-title">RSI (14)</div>
+      <canvas id="rsiChart" height="80"></canvas>
+    </div>
     <div class="dstats" id="dStats"></div>
     <div class="dsigs" id="dSigsEl"></div>
     <div class="dsrc" id="dSrc"></div>
@@ -230,7 +234,6 @@ const COINS=[
   {sym:"MELANIA",cg:"melania-meme",kr:"MELANIA"},
   {sym:"JUNO",cg:"juno-network",kr:"JUNO"},
   {sym:"FARTCOIN",cg:"fartcoin",kr:"FARTCOIN"},
-  {sym:"00",cg:"zero-knowledge",kr:"ZEROG"},
   {sym:"MOVR",cg:"moonriver",kr:"MOVR"},
   {sym:"SC",cg:"siacoin",kr:"SC"},
   {sym:"TRU",cg:"truefi",kr:"TRU"},
@@ -457,6 +460,54 @@ function renderDetailChart(prices,tf){
     ctx.strokeStyle='#ffd700';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
   }
   document.getElementById('chartTitle').innerHTML=`<span class="live-dot"></span>${detailCoin.sym} · ${tf} CHART`;
+  renderRSIChart(prices);
+}
+
+function renderRSIChart(prices){
+  const canvas=document.getElementById('rsiChart');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||360,H=80;
+  canvas.width=W*window.devicePixelRatio;
+  canvas.height=H*window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  if(!prices||prices.length<15)return;
+  // Calculate RSI for each point
+  const rsiVals=[];
+  for(let i=14;i<prices.length;i++){
+    rsiVals.push(calcRSI(prices.slice(0,i+1)));
+  }
+  if(rsiVals.length<2)return;
+  const pad=12;
+  const x=i=>(i/(rsiVals.length-1))*(W-pad*2)+pad;
+  const y=v=>H-pad-((v-0)/100)*(H-pad*2);
+  // Overbought/oversold zones
+  ctx.fillStyle='#ff4d4d10';
+  ctx.fillRect(pad,y(100),W-pad*2,y(70)-y(100));
+  ctx.fillStyle='#00bfff10';
+  ctx.fillRect(pad,y(30),W-pad*2,y(0)-y(30));
+  // Grid lines at 70, 50, 30
+  [70,50,30].forEach(v=>{
+    ctx.strokeStyle=v===50?'#1e2530':'#2a3a4a';
+    ctx.lineWidth=1;ctx.setLineDash(v===50?[]:[4,4]);
+    ctx.beginPath();ctx.moveTo(pad,y(v));ctx.lineTo(W-pad,y(v));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#5a6a7a';ctx.font='9px Space Mono,monospace';
+    ctx.fillText(v,2,y(v)+3);
+  });
+  // RSI line - color based on zone
+  for(let i=1;i<rsiVals.length;i++){
+    const v=rsiVals[i];
+    ctx.beginPath();ctx.moveTo(x(i-1),y(rsiVals[i-1]));ctx.lineTo(x(i),y(v));
+    ctx.strokeStyle=v>70?'#ff8c00':v<30?'#00bfff':'#00ff95';
+    ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  }
+  // Current RSI dot
+  const lastRSI=rsiVals[rsiVals.length-1];
+  ctx.beginPath();
+  ctx.arc(x(rsiVals.length-1),y(lastRSI),4,0,Math.PI*2);
+  ctx.fillStyle=lastRSI>70?'#ff8c00':lastRSI<30?'#00bfff':'#00ff95';
+  ctx.fill();
 }
 
 function renderDetailStats(prices,source){
