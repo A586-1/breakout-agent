@@ -391,7 +391,10 @@ async function loadDetail(tf){
   const minutes=KR_INT[tf]||1440;
   let prices=[], source='', candleData=null;
   try{
-    const kr=await fetch(`https://api.kraken.com/0/public/OHLC?pair=${detailCoin.kr}USD&interval=${minutes}&since=0`);
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),6000);
+    const kr=await fetch(`https://api.kraken.com/0/public/OHLC?pair=${detailCoin.kr}USD&interval=${minutes}&since=0`,{signal:controller.signal});
+    clearTimeout(timeout);
     const kd=await kr.json();
     if(kd.error&&kd.error.length>0)throw new Error(kd.error[0]);
     const key=Object.keys(kd.result).find(k=>k!=='last');
@@ -480,6 +483,14 @@ function renderDetailChart(candles, prices, tf){
     }
     const ma50series = priceChartInstance.addLineSeries({color:'#ff8c00',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,title:'MA50'});
     ma50series.setData(ma50data);
+    // MA200 line
+    const ma200data = [];
+    for(let i=199;i<candles.length;i++){
+      const avg = candles.slice(i-199,i+1).reduce((s,c)=>s+c.close,0)/200;
+      ma200data.push({time:candles[i].time, value:avg});
+    }
+    const ma200series = priceChartInstance.addLineSeries({color:'#cc44ff',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,title:'MA200'});
+    ma200series.setData(ma200data);
     priceChartInstance.timeScale().fitContent();
   } else if(prices && prices.length > 1){
     // Fallback area chart
